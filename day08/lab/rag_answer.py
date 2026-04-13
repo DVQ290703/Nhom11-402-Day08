@@ -76,10 +76,34 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
         # Lưu ý: distances trong ChromaDB cosine = 1 - similarity
         # Score = 1 - distance
     """
-    raise NotImplementedError(
-        "TODO Sprint 2: Implement retrieve_dense().\n"
-        "Tham khảo comment trong hàm để biết cách query ChromaDB."
+    import chromadb
+    from index import get_embedding, CHROMA_DB_DIR
+
+    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
+    collection = client.get_collection("rag_lab")
+
+    query_embedding = get_embedding(query)
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=min(top_k, collection.count()),
+        include=["documents", "metadatas", "distances"]
     )
+
+    chunks = []
+    for doc, meta, dist in zip(
+        results["documents"][0],
+        results["metadatas"][0],
+        results["distances"][0],
+    ):
+        # ChromaDB cosine distance: score = 1 - distance
+        score = 1.0 - dist
+        chunks.append({
+            "text": doc,
+            "metadata": meta,
+            "score": score,
+        })
+
+    return chunks
 
 
 # =============================================================================
@@ -109,10 +133,21 @@ def retrieve_sparse(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any
         scores = bm25.get_scores(tokenized_query)
         top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
     """
-    # TODO Sprint 3: Implement BM25 search
-    # Tạm thời return empty list
-    print("[retrieve_sparse] Chưa implement — Sprint 3")
-    return []
+    bm25, all_chunks = _build_bm25_index()
+
+    tokenized_query = query.lower().split()
+    scores = bm25.get_scores(tokenized_query)
+
+    # Sort theo điểm giảm dần, lấy top_k
+    top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+
+    results = []
+    for idx in top_indices:
+        chunk = all_chunks[idx].copy()
+        chunk["score"] = float(scores[idx])
+        results.append(chunk)
+
+    return results
 
 
 # =============================================================================
@@ -150,8 +185,44 @@ def retrieve_hybrid(
     """
     # TODO Sprint 3: Implement hybrid RRF
     # Tạm thời fallback về dense
-    print("[retrieve_hybrid] Chưa implement RRF — fallback về dense")
-    return retrieve_dense(query, top_k)
+    dense_results = retrieve_dense(query, top_k=top_k)
+    sparse_results = retrieve_sparse(query, top_k=top_k)
+
+    # Tạo map text → rank cho cả hai danh sách
+    dense_rank_map = {}
+    for rank, chunk in enumerate(dense_results):
+        key = chunk["text"][:200]  # dùng 200 char đầu làm key
+        dense_rank_map[key] = rank
+
+    sparse_rank_map = {}
+    for rank, chunk in enumerate(sparse_results):
+        key = chunk["text"][:200]
+        sparse_rank_map[key] = rank
+
+    # Gộp tất cả unique chunks
+    all_chunks_map: Dict[str, Dict] = {}
+    for chunk in dense_results + sparse_results:
+        key = chunk["text"][:200]
+        if key not in all_chunks_map:
+            all_chunks_map[key] = chunk
+
+    # Tính RRF score cho mỗi chunk
+    RRF_K = 60
+    scored_chunks = []
+    for key, chunk in all_chunks_map.items():
+        d_rank = dense_rank_map.get(key, len(dense_results))  # nếu không có → rank cuối
+        s_rank = sparse_rank_map.get(key, len(sparse_results))
+        rrf_score = (
+            dense_weight * (1 / (RRF_K + d_rank)) +
+            sparse_weight * (1 / (RRF_K + s_rank))
+        )
+        chunk_copy = chunk.copy()
+        chunk_copy["score"] = rrf_score
+        scored_chunks.append(chunk_copy)
+
+    # Sort theo RRF score giảm dần
+    scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+    return scored_chunks[:top_k]
 
 
 # =============================================================================
@@ -191,7 +262,35 @@ def rerank(
     """
     # TODO Sprint 3: Implement rerank
     # Tạm thời trả về top_k đầu tiên (không rerank)
-    return candidates[:top_k]
+    global _rerank_model
+
+    if not candidates:
+        return candidates
+
+    try:
+        from sentence_transformers import CrossEncoder
+        if _rerank_model is None:
+            print("  [Rerank] Loading cross-encoder model...")
+            _rerank_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        pairs = [[query, chunk["text"]] for chunk in candidates]
+        scores = _rerank_model.predict(pairs)
+
+        # Sort theo cross-encoder score
+        ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+        result = []
+        for chunk, score in ranked[:top_k]:
+            chunk_copy = chunk.copy()
+            chunk_copy["rerank_score"] = float(score)
+            result.append(chunk_copy)
+        return result
+
+    except ImportError:
+        print("  [Rerank] CrossEncoder không available, fallback top_k")
+        return candidates[:top_k]
+    except Exception as e:
+        print(f"  [Rerank] Lỗi: {e}, fallback top_k")
+        return candidates[:top_k]
 
 
 # =============================================================================

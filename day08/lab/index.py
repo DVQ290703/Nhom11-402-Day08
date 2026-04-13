@@ -170,49 +170,49 @@ def chunk_document(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
     return chunks
 
 
-# def _split_by_size(
-#     text: str,
-#     base_metadata: Dict,
-#     section: str,
-#     chunk_chars: int = CHUNK_SIZE * 4,
-#     overlap_chars: int = CHUNK_OVERLAP * 4,
-# ) -> List[Dict[str, Any]]:
-#     """
-#     Helper: Split text dài thành chunks với overlap.
+def _split_by_size(
+    text: str,
+    base_metadata: Dict,
+    section: str,
+    chunk_chars: int = CHUNK_SIZE * 4,
+    overlap_chars: int = CHUNK_OVERLAP * 4,
+) -> List[Dict[str, Any]]:
+    """
+    Helper: Split text dài thành chunks với overlap.
 
-#     TODO Sprint 1:
-#     Hiện tại dùng split đơn giản theo ký tự.
-#     Cải thiện: split theo paragraph (\n\n) trước, rồi mới ghép đến khi đủ size.
-#     """
-#     if len(text) <= chunk_chars:
-#         # Toàn bộ section vừa một chunk
-#         return [{
-#             "text": text,
-#             "metadata": {**base_metadata, "section": section},
-#         }]
+    TODO Sprint 1:
+    Hiện tại dùng split đơn giản theo ký tự.
+    Cải thiện: split theo paragraph (\n\n) trước, rồi mới ghép đến khi đủ size.
+    """
+    if len(text) <= chunk_chars:
+        # Toàn bộ section vừa một chunk
+        return [{
+            "text": text,
+            "metadata": {**base_metadata, "section": section},
+        }]
 
-#     # TODO: Implement split theo paragraph với overlap
-#     # Gợi ý:
-#     # paragraphs = text.split("\n\n")
-#     # Ghép paragraphs lại cho đến khi gần đủ chunk_chars
-#     # Lấy overlap từ đoạn cuối chunk trước
-#     chunks = []
-#     start = 0
-#     while start < len(text):
-#         end = min(start + chunk_chars, len(text))
-#         chunk_text = text[start:end]
+    # TODO: Implement split theo paragraph với overlap
+    # Gợi ý:
+    # paragraphs = text.split("\n\n")
+    # Ghép paragraphs lại cho đến khi gần đủ chunk_chars
+    # Lấy overlap từ đoạn cuối chunk trước
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_chars, len(text))
+        chunk_text = text[start:end]
 
-#         # TODO: Tìm ranh giới tự nhiên gần nhất (dấu xuống dòng, dấu chấm)
-#         # thay vì cắt giữa câu
+        # TODO: Tìm ranh giới tự nhiên gần nhất (dấu xuống dòng, dấu chấm)
+        # thay vì cắt giữa câu
 
-#         chunks.append({
-#             "text": chunk_text,
-#             "metadata": {**base_metadata, "section": section},
-#         })
-#         # Overlap: lùi lại overlap_chars để chunk sau có ngữ cảnh từ chunk trước
-#         start = end - overlap_chars
+        chunks.append({
+            "text": chunk_text,
+            "metadata": {**base_metadata, "section": section},
+        })
+        # Overlap: lùi lại overlap_chars để chunk sau có ngữ cảnh từ chunk trước
+        start = end - overlap_chars
 
-#     return chunks
+    return chunks
 
 def _split_by_size(
     text: str,
@@ -562,12 +562,12 @@ if __name__ == "__main__":
     print("\n--- Build Full Index ---")
     print("Lưu ý: Cần implement get_embedding() trước khi chạy bước này!")
     # Uncomment dòng dưới sau khi implement get_embedding():
-    # build_index()
+    build_index()
 
     # Bước 4: Kiểm tra index
     # Uncomment sau khi build_index() thành công:
-    # list_chunks()
-    # inspect_metadata_coverage()
+    list_chunks()
+    inspect_metadata_coverage()
 
     print("\nSprint 1 setup hoàn thành!")
     print("Việc cần làm:")

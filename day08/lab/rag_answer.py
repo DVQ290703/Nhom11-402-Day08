@@ -37,7 +37,9 @@ TOP_K_SEARCH = 10    # Số chunk lấy từ vector store trước rerank (searc
 TOP_K_SELECT = 3     # Số chunk gửi vào prompt sau rerank/select (top-3 sweet spot)
 
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
-
+_bm25_index = None
+_bm25_chunks = None
+_rerank_model = None
 
 # =============================================================================
 # RETRIEVAL — DENSE (Vector Search)
@@ -106,6 +108,40 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
         })
 
     return chunks
+
+def _build_bm25_index() -> Tuple[Any, List[Dict]]:
+    """
+    Build BM25 index từ toàn bộ chunks trong ChromaDB.
+    Cache để tránh rebuild nhiều lần.
+    """
+    global _bm25_index, _bm25_chunks
+
+    if _bm25_index is not None:
+        return _bm25_index, _bm25_chunks
+
+    import chromadb
+    from rank_bm25 import BM25Okapi
+    from index import CHROMA_DB_DIR
+
+    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
+    collection = client.get_collection("rag_lab")
+
+    # Lấy tất cả chunks
+    results = collection.get(include=["documents", "metadatas"])
+    all_docs = results["documents"]
+    all_metas = results["metadatas"]
+
+    _bm25_chunks = []
+    tokenized_corpus = []
+
+    for doc, meta in zip(all_docs, all_metas):
+        _bm25_chunks.append({"text": doc, "metadata": meta})
+        # Tokenize: lowercase + split (đơn giản, hiệu quả với tiếng Việt mixed)
+        tokens = doc.lower().split()
+        tokenized_corpus.append(tokens)
+
+    _bm25_index = BM25Okapi(tokenized_corpus)
+    return _bm25_index, _bm25_chunks
 
 
 # =============================================================================

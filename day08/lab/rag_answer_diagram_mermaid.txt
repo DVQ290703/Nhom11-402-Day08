@@ -1,0 +1,34 @@
+graph TD
+    Start((Bắt đầu)) --> ReceiveQuery[Nhận Câu hỏi - Query]
+    ReceiveQuery --> Config{Kiểm tra Chế độ<br/>retrieval_mode}
+
+    %% Bước 1: Retrieval
+    Config -- dense --> DenseSearch[<b>retrieve_dense</b><br/>Tìm kiếm theo Embedding<br/>trong ChromaDB]
+    Config -- sparse --> SparseSearch[<b>retrieve_sparse</b><br/>Tìm kiếm theo Keyword<br/>dùng BM25]
+    Config -- hybrid --> HybridSearch[<b>retrieve_hybrid</b><br/>Kết hợp Dense + Sparse<br/>dùng thuật toán RRF]
+
+    DenseSearch --> Candidates[Danh sách Chunk ứng viên]
+    SparseSearch --> Candidates
+    HybridSearch --> Candidates
+
+    %% Bước 2: Rerank
+    Candidates --> RerankCheck{Sử dụng<br/>rerank?}
+    RerankCheck -- Có --> RerankLogic[<b>rerank</b><br/>Sử dụng Cross-Encoder<br/>để chấm điểm lại]
+    RerankCheck -- Không --> SelectTopK[Chọn Top K chunks<br/>đã sort theo score]
+    
+    RerankLogic --> ContextBuild
+    SelectTopK --> ContextBuild
+
+    %% Bước 3: Build Prompt
+    ContextBuild[<b>build_context_block</b><br/>Đóng gói chunks kèm<br/>metadata & citation ID] --> PromptBuild[<b>build_grounded_prompt</b><br/>Ghép Context + Query<br/>vào System Prompt]
+
+    %% Bước 4: Generate
+    PromptBuild --> LLMCall[<b>call_llm</b><br/>Gọi DeepSeek-V2/GPT/Gemini<br/>với Temperature=0]
+    LLMCall --> ExtractSources[Trích xuất danh sách Nguồn<br/>- sources - từ metadata]
+    
+    ExtractSources --> End((Trả về Kết quả<br/>Answer + Sources))
+
+    style Start fill:#f9f,stroke:#333,stroke-width:2px
+    style End fill:#f9f,stroke:#333,stroke-width:2px
+    style HybridSearch fill:#fff4dd,stroke:#d4a017,stroke-width:2px
+    style LLMCall fill:#e1f5fe,stroke:#01579b,stroke-width:2px

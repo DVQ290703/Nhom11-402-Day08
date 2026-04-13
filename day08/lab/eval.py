@@ -22,7 +22,7 @@ import csv
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from rag_answer import rag_answer
+from rag_answer import rag_answer, call_llm
 
 # =============================================================================
 # CẤU HÌNH
@@ -88,12 +88,30 @@ def score_faithfulness(
 
     Trả về dict với: score (1-5) và notes (lý do)
     """
-    # TODO Sprint 4: Implement scoring
-    # Tạm thời trả về None (yêu cầu chấm thủ công)
-    return {
-        "score": None,
-        "notes": "TODO: Chấm thủ công hoặc implement LLM-as-Judge",
-    }
+    prompt = f"""Rate the FAITHFULNESS of the following RAG answer on a scale of 1 to 5.
+Faithfulness: Is the answer derived ONLY from the retrieved context? (No outside info/hallucination).
+5: Perfectly grounded.
+1: Contains major hallucinations not in context.
+
+Retrieved Context:
+{chunks_used}
+
+Answer:
+{answer}
+
+Output JSON format ONLY: {{"score": <int>, "reason": "<string>"}}"""
+
+    try:
+        response = call_llm(prompt)
+        import json, re
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if match:
+            res = json.loads(match.group())
+            return {"score": res["score"], "notes": res["reason"]}
+    except Exception as e:
+        return {"score": 1, "notes": f"Error scoring: {e}"}
+
+    return {"score": None, "notes": "LLM failed to score"}
 
 
 def score_answer_relevance(
@@ -113,10 +131,24 @@ def score_answer_relevance(
 
     TODO Sprint 4: Implement tương tự score_faithfulness
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_answer_relevance",
-    }
+    prompt = f"""Rate the ANSWER RELEVANCE on a scale of 1 to 5.
+Does the answer directly address the user's question?
+Question: {query}
+Answer: {answer}
+
+Output JSON format ONLY: {{"score": <int>, "reason": "<string>"}}"""
+
+    try:
+        response = call_llm(prompt)
+        import json, re
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if match:
+            res = json.loads(match.group())
+            return {"score": res["score"], "notes": res["reason"]}
+    except Exception as e:
+        return {"score": 1, "notes": f"Error scoring: {e}"}
+
+    return {"score": None, "notes": "LLM failed to score"}
 
 
 def score_context_recall(
@@ -198,10 +230,24 @@ def score_completeness(
          Rate completeness 1-5. Are all key points covered?
          Output: {'score': int, 'missing_points': [str]}"
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_completeness (so sánh với expected_answer)",
-    }
+    prompt = f"""Rate the COMPLETENESS of the answer on a scale of 1 to 5.
+Does it cover all key points from the expected answer?
+Expected Answer: {expected_answer}
+Model Answer: {answer}
+
+Output JSON format ONLY: {{"score": <int>, "reason": "<string>"}}"""
+
+    try:
+        response = call_llm(prompt)
+        import json, re
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if match:
+            res = json.loads(match.group())
+            return {"score": res["score"], "notes": res["reason"]}
+    except Exception as e:
+        return {"score": 1, "notes": f"Error scoring: {e}"}
+
+    return {"score": None, "notes": "LLM failed to score"}
 
 
 # =============================================================================

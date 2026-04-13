@@ -616,7 +616,7 @@ def compare_retrieval_strategies(query: str) -> None:
     print(f"Query: {query}")
     print('='*60)
 
-    strategies = ["dense", "hybrid"]  # Thêm "sparse" sau khi implement
+    strategies = ["dense", "sparse","hybrid"]  # Thêm "sparse" sau khi implement
 
     for strategy in strategies:
         print(f"\n--- Strategy: {strategy} ---")
@@ -644,7 +644,14 @@ if __name__ == "__main__":
         "SLA xử lý ticket P1 là bao lâu?",
         "Khách hàng có thể yêu cầu hoàn tiền trong bao nhiêu ngày?",
         "Ai phải phê duyệt để cấp quyền Level 3?",
-        "ERR-403-AUTH là lỗi gì?",  # Query không có trong docs → kiểm tra abstain
+        "Sản phẩm kỹ thuật số có được hoàn tiền không?",
+        "Escalation trong sự cố P1 diễn ra như thế nào?",
+        "Approval Matrix để cấp quyền hệ thống là tài liệu nào?",
+        "Nhân viên được làm remote tối đa mấy ngày mỗi tuần?",
+        "ERR-403-AUTH là lỗi gì và cách xử lý?",
+        "Nếu cần hoàn tiền khẩn cấp cho khách hàng VIP, quy trình có khác không?",
+
+          # Query không có trong docs → kiểm tra abstain
     ]
 
     print("\n--- Sprint 2: Test Baseline (Dense) ---")
@@ -660,10 +667,10 @@ if __name__ == "__main__":
             print(f"Lỗi: {e}")
 
     # Uncomment sau khi Sprint 3 hoàn thành:
-    # print("\n--- Sprint 3: So sánh strategies ---")
-    # compare_retrieval_strategies("Approval Matrix để cấp quyền là tài liệu nào?")
-    # compare_retrieval_strategies("ERR-403-AUTH")
-
+    print("\n--- Sprint 3: So sánh strategies ---")
+    compare_retrieval_strategies("Approval Matrix để cấp quyền là tài liệu nào?")
+    compare_retrieval_strategies("ERR-403-AUTH")
+    """
     print("\n\nViệc cần làm Sprint 2:")
     print("  1. Implement retrieve_dense() — query ChromaDB")
     print("  2. Implement call_llm() — gọi OpenAI hoặc Gemini")
@@ -675,3 +682,4 @@ if __name__ == "__main__":
     print("  2. Implement variant đó")
     print("  3. Chạy compare_retrieval_strategies() để thấy sự khác biệt")
     print("  4. Ghi lý do chọn biến đó vào docs/tuning-log.md")
+    """

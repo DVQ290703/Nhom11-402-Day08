@@ -9,7 +9,7 @@ Chạy: python run_eval.py
 import json
 from pathlib import Path
 from datetime import datetime
-# from rag_answer import rag_answer  # Không dùng để tránh API call
+from rag_answer import rag_answer  # Không dùng để tránh API call
 
 # Cấu hình
 GRADING_QUESTIONS_PATH = Path(__file__).parent / "data" / "grading_questions.json"
@@ -32,7 +32,7 @@ def main():
 
         # Mock result để tránh gọi API (cho demo)
         # Trong thực tế, uncomment dòng dưới
-        # result = rag_answer(q["question"], retrieval_mode="hybrid", verbose=False)
+        result = rag_answer(q["question"], retrieval_mode="hybrid", verbose=False)
 
         # Mock data
         mock_answer = "Mock answer for demo"  # Thay bằng result["answer"]
